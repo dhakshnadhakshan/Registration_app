@@ -258,7 +258,7 @@ $ ansible-playbook kube_deploy.yml
 Exec command:ansible-playbook /opt/Docker/kube_deploy.yml
 - open an existing job-> RegApp_CI_Job-> configure-> build trigger : poll scm: *****
                                                   ->post build action(add)->tick build other action->project to build(RegApp_CD_Job)
-                                                -> post build action-> exec command(edit) -                                                                                                                     ( ansible-playbook/opt/Docker/creat_image_regapp.yml )
+                                                -> post build action-> exec command(edit): (ansible-playbook/opt/Docker/creat_image_regapp.yml )
 
 
 $ kubectl get svc
