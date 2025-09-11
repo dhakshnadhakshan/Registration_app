@@ -1,4 +1,5 @@
 ===============================Jenkins Installation==================================
+install a ec2 instance with open port number of 80
 https://www.jenkins.io/doc/book/installing/linux/
 https://www.jenkins.io/doc/tutorials/tutorial-for-installing-jenkins-on-AWS/
 $ sudo yum update –y
@@ -48,16 +49,26 @@ $ echo $PATH
 $ source .bash_profile
 $ echo $PATH
 $ mvn -v
+-plugin-> maven
+-tools->JDK->name:java11,home:/usr/lib/jvm/java-11-openjdk-11.0.19.0.7-1.amzn2.0.1.x86_64
+        maven->name:maven,homepath:/opt/maven
+-plugin->github->disable github branch source plugin and enable github plugin.
+$ yum install git
+$ visudo  #to add user in root 
+-shift+G
 Java Path -- /usr/lib/jvm/java-11-openjdk-11.0.19.0.7-1.amzn2.0.1.x86_64
 MAVEN_HOME:/opt/maven     //You need to add this at Jenkins Job under Maven Installations
 ===============================Ansible Server setup and Ansible Installation==================================
+-while create an ec2 instance, juzt open port 8080-8090.
 $ sudo nano /etc/hostname
 $ useradd ansadmin
 $ passwd ansadmin
 $ visudo 
 ansadmin ALL=(ALL)       NOPASSWD: ALL      //add this in sudo file.
 $ cd /etc/ssh
-$ nano sshd_config
+$ nano sshd_config 
+  (make password authentication yes)
+$ sudo su - ansadmin
 $ service sshd reload
 $ ssh-keygen
 public key is at /home/ansadmin/.ssh/id_rsa.pub
@@ -67,6 +78,14 @@ $ ansible --version
 $ cd /opt
 $ sudo mkdir docker
 $ sudo chown ansadmin:ansadmin docker
+-system->publish over ssh->ssh servers->name:Ansible-Server,hostname:(enter the public ip of ansible server),username:ansadmin
+         advance->use password authentication->password...(your password any) -> click test configuration (it will become success)
+
+-new job item->name:RegApp_CI_Job+maven project.
+             ->source code management->git+repository URL+branch is main
+             ->build-goals:clean install
+             ->add post build-send over ssh, name:Ansible-Server,Source files:webapp/target/*.war,Remove prefix:webapp/target,Remote:                                                                                                                        directory://opt//docker
+              ->apply and save.
 Source files:webapp/target/*.war       Remove prefix:webapp/target        Remote directory://opt//docker
 ===============================Install and Configure Docker on Ansible Server==================================
 $  sudo yum install docker
@@ -74,11 +93,15 @@ $ sudo usermod -aG docker ansadmin
 $ id ansadmin
 $ sudo service docker start
 $ sudo systemctl start docker
+$ service docker status
+$ sudo init 6
+ press R
+$ cd /opt/Docker/
 $ nano Dockerfile
 FROM tomcat:latest
 RUN cp -R /usr/local/tomcat/webapps.dist/* /usr/local/tomcat/webapps
 COPY ./*.war /usr/local/tomcat/webapps
-===============================Create Ansible Playbook to Create Docker Image and Copy Image to DockerHub==================================
+==============================Create Ansible Playbook to Create Docker Image and Copy Image to DockerHub==================================
 $ ifconfig 
 $ sudo nano /etc/ansible/hosts
 [ansible]
@@ -102,8 +125,16 @@ $ nano regapp.yml
 
 $ ansible-playbook regapp.yml --check
 $ ansible-playbook regapp.yml
+- CI job->configure->post build action:exec command is ansible-playbook /opt/docker/regapp.yml
 Exec Command:ansible-playbook /opt/docker/regapp.yml
 ===============================Setup Bootstrap Server for eksctl==================================
+-install new ec2 instance 
+$ sudo su
+$ nano /etc/hostname
+  (EKS_BOOTSTRAP_SERVER)
+$ init 6
+* creat a IAM role and attach to the instance.
+  EC2+ ec2 full access, cloud formationfull,IAMfull, Administration.
 # Install AWS Cli on the above EC2
 Refer==https://docs.aws.amazon.com/cli/latest/userguide/getting-started-install.html
 $ curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip"
@@ -189,6 +220,8 @@ spec:
   type: LoadBalancer
 
 ===============================Integrate Bootstrap Server with Ansible==================================
+$ root]-nano /etc/ssh/sshd_config 
+        (make password Authentication yes)
 $ passwd root
 $ nano /etc/ansible/hosts
 [ansible]
@@ -196,9 +229,10 @@ localhost
 
 [kubernetes]
 BootStrap-Server-IP
-
+$ service sshd reload
+$ ssh root@172.31.41.7   # 172.31.41.7 is ip address of bootserver. # this command is for go inside the bootserver from ansible server.
 $ ssh-copy-id root@BootStrap-Server-IP
-
+$ exit
 # Create Ansible Playbook to Run Deployment and Service Manifest files
 $ mv regapp.yml creat_image_regapp.yml 
 $ nano kube_deploy.yml
@@ -217,7 +251,19 @@ $ nano kube_deploy.yml
       command: kubectl rollout restart deployment.apps/virtualtechbox-regapp
 
 $ ansible-playbook kube_deploy.yml
+
+-new job-> name:RegAPp_CD_Job->freestyle project.
+        ->post build action (Add)-send build artifacts over ssh->transfer: exec command:ansible-playbook /opt/Docker/kube_deploy.yml
+        -> apply and save
 Exec command:ansible-playbook /opt/Docker/kube_deploy.yml
+- open an existing job-> RegApp_CI_Job-> configure-> build trigger : poll scm: *****
+                                                  ->post build action(add)->tick build other action->project to build(RegApp_CD_Job)
+                                                -> post build action-> exec command(edit) -                                                                                                                     ( ansible-playbook/opt/Docker/creat_image_regapp.yml )
+
+
+$ kubectl get svc
+$ kubectl get all
+- loadbalancer:8080/webapp
 
 ===============================Cleanup==================================
 $ kubectl delete deployment.apps/virtualtechbox-regapp
