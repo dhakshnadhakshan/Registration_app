@@ -54,8 +54,6 @@ $ mvn -v
         maven->name:maven,homepath:/opt/maven
 -plugin->github->disable github branch source plugin and enable github plugin.
 $ yum install git
-$ visudo  #to add user in root 
--shift+G
 Java Path -- /usr/lib/jvm/java-11-openjdk-11.0.19.0.7-1.amzn2.0.1.x86_64
 MAVEN_HOME:/opt/maven     //You need to add this at Jenkins Job under Maven Installations
 ===============================Ansible Server setup and Ansible Installation==================================
