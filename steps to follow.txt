@@ -1,0 +1,10 @@
+"Steps to follow"
+install and configure jenkins
+install and configure maven
+ansible server setup and ansible installation
+setup bootstrap server for eksctl
+setup kubernates using eksctl
+integrate bootstrap server with ansible
+create ansible playbook to run deployment and service manifest files
+create jenkins deployment job for kubernetes
+verify cicd by doing test commit on github repository
